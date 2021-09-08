@@ -1,6 +1,6 @@
 [package]
 name = "minigrep_eoin"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Eoin Moore <eomoore@tcd.ie>"]
 edition = "2018"
 description = "Simple, rust-based implementation of grep"

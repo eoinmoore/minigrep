@@ -1,3 +1,9 @@
+//! A simple implementation of grep
+//!
+//! # Usage
+//!
+//! minigrep_eoin QUERY PATH [--case-insensitive]
+
 use std::env;
 use std::process;
 

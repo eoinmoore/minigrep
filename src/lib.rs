@@ -2,6 +2,9 @@ use std::error::Error;
 use std::env;
 use std::fs;
 
+#[cfg(test)]
+use std::iter;
+
 pub struct Config {
     pub query: String,
     pub filename: String,
@@ -9,7 +12,10 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(mut args: env::Args) -> Result<Config, &'static str> {
+    pub fn new<T>(mut args: T) -> Result<Config, &'static str>
+where
+    T: Iterator<Item = String>,
+{
         args.next();
 
         let query = match args.next() {
@@ -75,81 +81,78 @@ pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a st
 mod tests {
     use super::*;
 
-//     fn args_base_error(args: env::Args, expectedError: &str) {
-//         match Config::new(args) {
-//             Ok(config) => {
-//                 if args.len() < 3 {
-//                     panic!("Config should require at least three arguments.");
-//                 };
-//                 assert_eq!(config.query, args[1]);
-//                 assert_eq!(config.filename, args[2]);
-//             },
-//             Err(e) => {
-//                 if args.len() < 3 {
-//                     assert_eq!(e, "not enough arguments");
-//                 } else {
-//                     panic!("Config should not fail when passed \
-//                             three or more arguments.");
-//                 }
-//             }
-//         };
-//     }
-// 
-//     fn args_base(args: env::Args) {
-//         args_base_error(args, "");
-//     }
-// 
-//     #[test]
-//     fn not_enough_args_1() {
-//         let args = env::Args::new([]);
-//         args_base_error(args, "Didn't get a query string");
-//     }
-// 
-//     #[test]
-//     fn not_enough_args_2() {
-//         let args = env::Args::new(['a'.to_string()]);
-//         args_base_error(args, "Didn't get a query string");
-//     }
-// 
-//     #[test]
-//     fn not_enough_args_3() {
-//         let args = env::Args::new(['a'.to_string(), 'b'.to_string()]);
-//         args_base_error(args, "Didn't get a file name");
-//     }
-// 
-//     #[test]
-//     fn enough_args_1() {
-//         let args = env::Args::new(['a'.to_string(), 'b'.to_string(),
-//                                    'c'.to_string()]);
-//         args_base(args);
-//     }
-// 
-//     #[test]
-//     fn enough_args_2() {
-//         let args = env::Args::new(['a'.to_string(), 'b'.to_string(), 'c'.to_string(),
-//                                    'd'.to_string(), 'e'.to_string() ]);
-//         args_base(args)
-//     }
-// 
-//     #[test]
-//     fn run_non_existent() {
-//         let config = Config::new(
-//             env::Args::new(["a".to_string(), "b".to_string(),
-//                             "non_existent_file.txt".to_string()])).unwrap();
-//         if let Ok(_) = run(config) {
-//             panic!("Should panic.");
-//         }
-//     }
-// 
-//     #[test]
-//     fn run_existent() {
-//         let config = Config::new(
-//             env::Args::new(["a".to_string(), "b".to_string(),
-//                            "poem.txt".to_string()])).unwrap();
-//         if let Err(e) = run(config) {
-//             panic!("Panicked even though the file should exist: {}", e);
-//         }
-//     }
+    fn args_base_error<T>(args: T, expected_error: &str)
+    where
+        T: Iterator<Item = String>,
+        T: Clone,
+    {
+        let args_vector: Vec<_> = args.clone().collect();
+        match Config::new(args) {
+            Ok(config) => {
+                assert_eq!(config.query, args_vector[1]);
+                assert_eq!(config.filename, args_vector[2]);
+            },
+            Err(e) => {
+                assert_eq!(e, expected_error);
+            }
+        };
+    }
+
+    fn args_base<T>(args: T)
+    where
+        T: Iterator<Item = String>,
+        T: Clone,
+    {
+        args_base_error(args, "");
+    }
+
+    #[test]
+    fn not_enough_args_1() {
+        let args = iter::empty::<String>();
+        args_base_error(args, "Didn't get a query string");
+    }
+
+    #[test]
+    fn not_enough_args_2() {
+        let args = ['a'].iter().map(|s| s.to_string());
+        args_base_error(args, "Didn't get a query string");
+    }
+
+    #[test]
+    fn not_enough_args_3() {
+        let args = ['a', 'b'].iter().map(|s| s.to_string());
+        args_base_error(args, "Didn't get a file name");
+    }
+
+    #[test]
+    fn enough_args_1() {
+        let args = ['a', 'b', 'c'].iter().map(|s| s.to_string());
+        args_base(args);
+    }
+
+    #[test]
+    fn enough_args_2() {
+        let args = ['a', 'b', 'c', 'd', 'e' ].iter().map(|s| s.to_string());
+        args_base(args);
+    }
+
+    #[test]
+    fn run_non_existent() {
+        let config = Config::new(["a", "b", "non_existent_file.txt"].iter()
+                         .map(|s| s.to_string())).unwrap();
+        if let Ok(_) = run(config) {
+            panic!("Should panic.");
+        }
+    }
+
+    #[test]
+    fn run_existent() {
+        let config = Config::new( ["a", "b", "poem.txt"]
+                         .iter().map(|s| s.to_string())).unwrap();
+        if let Err(e) = run(config) {
+            panic!("Panicked even though the file should exist: {}", e);
+        }
+    }
 
     #[test]
     fn case_sensitive() {
